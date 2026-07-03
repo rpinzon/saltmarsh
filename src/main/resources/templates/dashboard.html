@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security" lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Dashboard · Saltmarsh</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}"/>
+</head>
+<body>
+<div class="layout">
+  <div th:replace="~{fragments :: sidebar}"></div>
+  <main class="main">
+    <div th:replace="~{fragments :: flashes}"></div>
+    <div class="page-header">
+      <div>
+        <h2>Harbor board</h2>
+        <p>Live snapshot of berths, stays, maintenance, and billing.</p>
+      </div>
+      <div class="actions">
+        <a class="btn" th:href="@{/reservations/new}">New reservation</a>
+        <a class="btn btn-secondary" th:href="@{/work-orders/new}">New work order</a>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat-card"><div class="label">Berths</div><div class="value" th:text="${stats['totalBerths']}">0</div></div>
+      <div class="stat-card"><div class="label">Available</div><div class="value" th:text="${stats['availableBerths']}">0</div></div>
+      <div class="stat-card"><div class="label">Docked now</div><div class="value" th:text="${stats['dockedNow']}">0</div></div>
+      <div class="stat-card"><div class="label">Pending stays</div><div class="value" th:text="${stats['pendingReservations']}">0</div></div>
+      <div class="stat-card"><div class="label">Open work</div><div class="value" th:text="${stats['openWorkOrders']}">0</div></div>
+      <div class="stat-card"><div class="label">Unpaid invoices</div><div class="value" th:text="${stats['issuedInvoices']}">0</div></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header"><h3>Currently docked</h3><a th:href="@{/reservations}">View all</a></div>
+        <div class="card-body" th:if="${#lists.isEmpty(docked)}"><div class="empty">No vessels checked in</div></div>
+        <table th:if="${!#lists.isEmpty(docked)}">
+          <thead><tr><th>Berth</th><th>Vessel</th><th>Until</th></tr></thead>
+          <tbody>
+          <tr th:each="r : ${docked}">
+            <td class="mono" th:text="${r.berth.code}">A-01</td>
+            <td th:text="${r.vessel.name}">Boat</td>
+            <td th:text="${r.endDate}">2026-01-01</td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><h3>Recent reservations</h3><a th:href="@{/reservations/new}">Book</a></div>
+        <div class="card-body" th:if="${#lists.isEmpty(myReservations)}"><div class="empty">No reservations yet</div></div>
+        <table th:if="${!#lists.isEmpty(myReservations)}">
+          <thead><tr><th>Vessel</th><th>Berth</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+          <tr th:each="r : ${myReservations}">
+            <td th:text="${r.vessel.name}">Boat</td>
+            <td class="mono" th:text="${r.berth.code}">A-01</td>
+            <td><span th:replace="~{fragments :: badge(${r.status})}"></span></td>
+            <td><a th:href="@{/reservations/{id}(id=${r.id})}">Open</a></td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><h3>Work queue</h3><a th:href="@{/work-orders}">View all</a></div>
+        <div class="card-body" th:if="${#lists.isEmpty(workOrders)}"><div class="empty">No work orders</div></div>
+        <table th:if="${!#lists.isEmpty(workOrders)}">
+          <thead><tr><th>Title</th><th>Priority</th><th>Status</th></tr></thead>
+          <tbody>
+          <tr th:each="w : ${workOrders}">
+            <td><a th:href="@{/work-orders/{id}(id=${w.id})}" th:text="${w.title}">Title</a></td>
+            <td><span th:replace="~{fragments :: badge(${w.priority})}"></span></td>
+            <td><span th:replace="~{fragments :: badge(${w.status})}"></span></td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card" sec:authorize="hasAnyRole('STAFF','HARBORMASTER','ADMIN')">
+        <div class="card-header"><h3>Audit trail</h3></div>
+        <div class="card-body stack" th:if="${auditEvents != null}">
+          <div class="audit-item" th:each="a : ${auditEvents}">
+            <div><strong th:text="${a.action}">ACTION</strong>
+              <span class="muted" th:text="' · ' + ${a.entityType} + ' #' + ${a.entityId}"></span></div>
+            <div class="muted" th:text="${a.details}">details</div>
+            <div class="muted" th:text="${a.actor != null ? a.actor.fullName : 'system'} + ' · ' + ${a.createdAt}"></div>
+          </div>
+          <div class="empty" th:if="${#lists.isEmpty(auditEvents)}">No audit events yet</div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+</body>
+</html>

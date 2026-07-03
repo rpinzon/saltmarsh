@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security" lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title th:text="${vesselId != null} ? 'Edit vessel' : 'Register vessel'">Vessel</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}"/>
+</head>
+<body>
+<div class="layout">
+  <div th:replace="~{fragments :: sidebar}"></div>
+  <main class="main">
+    <div class="page-header">
+      <div>
+        <h2 th:text="${vesselId != null} ? 'Edit vessel' : 'Register vessel'">Vessel</h2>
+        <p>Dimensions drive berth fit checks during booking.</p>
+      </div>
+    </div>
+    <div class="card"><div class="card-body">
+      <form th:action="${vesselId != null} ? @{/vessels/{id}(id=${vesselId})} : @{/vessels}"
+            th:object="${vesselRequest}" method="post" class="form-grid">
+        <div>
+          <label for="name">Name</label>
+          <input id="name" th:field="*{name}" required maxlength="120"/>
+          <div class="field-error" th:if="${#fields.hasErrors('name')}" th:errors="*{name}"></div>
+        </div>
+        <div>
+          <label for="registrationNumber">Registration number</label>
+          <input id="registrationNumber" th:field="*{registrationNumber}" required maxlength="64"/>
+          <div class="field-error" th:if="${#fields.hasErrors('registrationNumber')}" th:errors="*{registrationNumber}"></div>
+        </div>
+        <div>
+          <label for="lengthFeet">Length (ft)</label>
+          <input id="lengthFeet" type="number" step="0.01" min="0.01" th:field="*{lengthFeet}" required/>
+        </div>
+        <div>
+          <label for="beamFeet">Beam (ft)</label>
+          <input id="beamFeet" type="number" step="0.01" min="0.01" th:field="*{beamFeet}" required/>
+        </div>
+        <div>
+          <label for="draftFeet">Draft (ft)</label>
+          <input id="draftFeet" type="number" step="0.01" min="0.01" th:field="*{draftFeet}" required/>
+        </div>
+        <div>
+          <label for="vesselType">Type</label>
+          <select id="vesselType" th:field="*{vesselType}">
+            <option th:each="t : ${vesselTypes}" th:value="${t}" th:text="${t}"></option>
+          </select>
+        </div>
+        <div sec:authorize="hasAnyRole('STAFF','HARBORMASTER','ADMIN')" th:if="${boaters != null}">
+          <label for="ownerId">Owner</label>
+          <select id="ownerId" th:field="*{ownerId}">
+            <option th:each="b : ${boaters}" th:value="${b.id}" th:text="${b.fullName + ' (' + b.email + ')'}"></option>
+          </select>
+        </div>
+        <div class="full form-actions">
+          <button class="btn" type="submit">Save vessel</button>
+          <a class="btn btn-secondary" th:href="@{/vessels}">Cancel</a>
+        </div>
+      </form>
+    </div></div>
+  </main>
+</div>
+</body>
+</html>

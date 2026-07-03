@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Work orders · Saltmarsh</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}"/>
+</head>
+<body>
+<div class="layout">
+  <div th:replace="~{fragments :: sidebar}"></div>
+  <main class="main">
+    <div th:replace="~{fragments :: flashes}"></div>
+    <div class="page-header">
+      <div><h2>Work orders</h2><p>Maintenance queue with assignment, blocking, and billable completion.</p></div>
+      <a class="btn" th:href="@{/work-orders/new}">New work order</a>
+    </div>
+    <div class="card">
+      <div class="card-body" th:if="${#lists.isEmpty(workOrders)}"><div class="empty">No work orders</div></div>
+      <table th:if="${!#lists.isEmpty(workOrders)}">
+        <thead><tr><th>#</th><th>Title</th><th>Category</th><th>Priority</th><th>Status</th><th>Assignee</th><th></th></tr></thead>
+        <tbody>
+        <tr th:each="w : ${workOrders}">
+          <td class="mono" th:text="${w.id}">1</td>
+          <td th:text="${w.title}">Title</td>
+          <td th:text="${w.category}">DOCK</td>
+          <td><span th:replace="~{fragments :: badge(${w.priority})}"></span></td>
+          <td><span th:replace="~{fragments :: badge(${w.status})}"></span></td>
+          <td th:text="${w.assignedTo != null ? w.assignedTo.fullName : '—'}">—</td>
+          <td><a th:href="@{/work-orders/{id}(id=${w.id})}">Open</a></td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>
+</body>
+</html>

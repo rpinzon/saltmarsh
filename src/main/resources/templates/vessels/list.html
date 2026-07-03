@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Vessels · Saltmarsh</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}"/>
+</head>
+<body>
+<div class="layout">
+  <div th:replace="~{fragments :: sidebar}"></div>
+  <main class="main">
+    <div th:replace="~{fragments :: flashes}"></div>
+    <div class="page-header">
+      <div><h2>Vessels</h2><p>Registered boats and ownership.</p></div>
+      <a class="btn" th:href="@{/vessels/new}">Register vessel</a>
+    </div>
+    <div class="card">
+      <div class="card-body" th:if="${#lists.isEmpty(vessels)}"><div class="empty">No vessels found</div></div>
+      <table th:if="${!#lists.isEmpty(vessels)}">
+        <thead><tr><th>Name</th><th>Registration</th><th>Type</th><th>Length</th><th>Draft</th><th>Owner</th><th></th></tr></thead>
+        <tbody>
+        <tr th:each="v : ${vessels}">
+          <td th:text="${v.name}">Name</td>
+          <td class="mono" th:text="${v.registrationNumber}">REG</td>
+          <td th:text="${v.vesselType}">SAIL</td>
+          <td th:text="${v.lengthFeet} + ' ft'">32</td>
+          <td th:text="${v.draftFeet} + ' ft'">4</td>
+          <td th:text="${v.owner.fullName}">Owner</td>
+          <td class="actions">
+            <a class="btn btn-secondary btn-sm" th:href="@{/vessels/{id}/edit(id=${v.id})}">Edit</a>
+            <form th:action="@{/vessels/{id}/deactivate(id=${v.id})}" method="post">
+              <button class="btn btn-danger btn-sm" type="submit">Deactivate</button>
+            </form>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>
+</body>
+</html>

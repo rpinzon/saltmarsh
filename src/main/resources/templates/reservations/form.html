@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>New reservation · Saltmarsh</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}"/>
+</head>
+<body>
+<div class="layout">
+  <div th:replace="~{fragments :: sidebar}"></div>
+  <main class="main">
+    <div th:replace="~{fragments :: flashes}"></div>
+    <div class="page-header">
+      <div><h2>Book a berth</h2><p>System enforces fit, overlap, and bookable status rules.</p></div>
+    </div>
+    <div class="card"><div class="card-body">
+      <form th:action="@{/reservations}" th:object="${reservationRequest}" method="post" class="form-grid">
+        <div>
+          <label>Vessel</label>
+          <select th:field="*{vesselId}" required>
+            <option value="">Select vessel…</option>
+            <option th:each="v : ${vessels}" th:value="${v.id}"
+                    th:text="${v.name + ' (' + v.lengthFeet + ' ft, draft ' + v.draftFeet + ')'}"></option>
+          </select>
+        </div>
+        <div>
+          <label>Berth</label>
+          <select th:field="*{berthId}" required>
+            <option value="">Select berth…</option>
+            <option th:each="b : ${berths}" th:value="${b.id}"
+                    th:text="${b.code + ' · ' + b.pier + ' · max ' + b.maxLengthFeet + ' ft · $' + b.dailyRate + '/nt · ' + b.status}"></option>
+          </select>
+        </div>
+        <div><label>Start date</label><input type="date" th:field="*{startDate}" required/></div>
+        <div><label>End date</label><input type="date" th:field="*{endDate}" required/></div>
+        <div class="full"><label>Notes</label><textarea th:field="*{notes}" rows="3" maxlength="1000"></textarea></div>
+        <div class="full form-actions">
+          <button class="btn" type="submit">Create reservation</button>
+          <a class="btn btn-secondary" th:href="@{/reservations}">Cancel</a>
+          <a class="btn btn-secondary" th:href="@{/berths}">Check availability first</a>
+        </div>
+      </form>
+    </div></div>
+  </main>
+</div>
+</body>
+</html>

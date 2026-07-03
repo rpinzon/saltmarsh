@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Join waitlist · Saltmarsh</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}"/>
+</head>
+<body>
+<div class="layout">
+  <div th:replace="~{fragments :: sidebar}"></div>
+  <main class="main">
+    <div class="page-header"><div><h2>Join waitlist</h2><p>You'll be offered a fitting berth when one frees up for your dates.</p></div></div>
+    <div class="card"><div class="card-body">
+      <form th:action="@{/waitlist}" th:object="${waitlistRequest}" method="post" class="form-grid">
+        <div class="full">
+          <label>Vessel</label>
+          <select th:field="*{vesselId}" required>
+            <option value="">Select vessel…</option>
+            <option th:each="v : ${vessels}" th:value="${v.id}" th:text="${v.name}"></option>
+          </select>
+        </div>
+        <div><label>Preferred start</label><input type="date" th:field="*{preferredStart}" required/></div>
+        <div><label>Preferred end</label><input type="date" th:field="*{preferredEnd}" required/></div>
+        <div><label>Min berth length (optional)</label><input type="number" step="0.01" th:field="*{minLengthFeet}"/></div>
+        <div class="full"><label>Notes</label><textarea th:field="*{notes}" rows="3"></textarea></div>
+        <div class="full form-actions">
+          <button class="btn" type="submit">Join waitlist</button>
+          <a class="btn btn-secondary" th:href="@{/waitlist}">Cancel</a>
+        </div>
+      </form>
+    </div></div>
+  </main>
+</div>
+</body>
+</html>

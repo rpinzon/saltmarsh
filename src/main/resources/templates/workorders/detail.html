@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security" lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title th:text="'Work order #' + ${workOrder.id}">Work order</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}"/>
+</head>
+<body>
+<div class="layout">
+  <div th:replace="~{fragments :: sidebar}"></div>
+  <main class="main">
+    <div th:replace="~{fragments :: flashes}"></div>
+    <div class="page-header">
+      <div>
+        <h2 th:text="${workOrder.title}">Title</h2>
+        <p>
+          <span th:replace="~{fragments :: badge(${workOrder.status})}"></span>
+          <span th:replace="~{fragments :: badge(${workOrder.priority})}"></span>
+          <span class="muted" th:text="${workOrder.category}">CAT</span>
+        </p>
+      </div>
+      <div class="actions">
+        <form sec:authorize="hasAnyRole('STAFF','HARBORMASTER','ADMIN')"
+              th:if="${workOrder.status.name() == 'ASSIGNED' or workOrder.status.name() == 'OPEN' or workOrder.status.name() == 'BLOCKED'}"
+              th:action="@{/work-orders/{id}/start(id=${workOrder.id})}" method="post">
+          <button class="btn" type="submit">Start work</button>
+        </form>
+        <form th:if="${!workOrder.status.terminal}" th:action="@{/work-orders/{id}/cancel(id=${workOrder.id})}" method="post">
+          <button class="btn btn-danger" type="submit">Cancel</button>
+        </form>
+        <a class="btn btn-secondary" th:href="@{/work-orders}">Back</a>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card"><div class="card-body detail-grid">
+        <div class="detail-item"><div class="label">Reported by</div><div class="value" th:text="${workOrder.reportedBy.fullName}">User</div></div>
+        <div class="detail-item"><div class="label">Assignee</div><div class="value" th:text="${workOrder.assignedTo != null ? workOrder.assignedTo.fullName : 'Unassigned'}">—</div></div>
+        <div class="detail-item"><div class="label">Vessel</div><div class="value" th:text="${workOrder.vessel != null ? workOrder.vessel.name : '—'}">—</div></div>
+        <div class="detail-item"><div class="label">Berth</div><div class="value" th:text="${workOrder.berth != null ? workOrder.berth.code : '—'}">—</div></div>
+        <div class="detail-item full" style="grid-column:1/-1"><div class="label">Description</div><div class="value" th:text="${workOrder.description}">desc</div></div>
+        <div class="detail-item"><div class="label">Labor hours</div><div class="value" th:text="${workOrder.laborHours != null ? workOrder.laborHours : '—'}">—</div></div>
+        <div class="detail-item"><div class="label">Parts cost</div><div class="value" th:text="'$' + ${workOrder.partsCost}">0</div></div>
+        <div class="detail-item"><div class="label">Est. total</div><div class="value" th:text="'$' + ${workOrder.estimatedTotal()}">0</div></div>
+      </div></div>
+
+      <div class="card" sec:authorize="hasAnyRole('STAFF','HARBORMASTER','ADMIN')" th:if="${!workOrder.status.terminal}">
+        <div class="card-header"><h3>Staff actions</h3></div>
+        <div class="card-body stack">
+          <form th:action="@{/work-orders/{id}/assign(id=${workOrder.id})}" method="post" class="form-grid">
+            <div class="full"><label>Assign to</label>
+              <select name="assigneeId" required>
+                <option th:each="s : ${staffMembers}" th:value="${s.id}" th:text="${s.fullName + ' (' + s.role + ')'}"></option>
+              </select>
+            </div>
+            <div class="full"><button class="btn btn-secondary" type="submit">Assign</button></div>
+          </form>
+
+          <form th:if="${workOrder.status.name() == 'IN_PROGRESS' or workOrder.status.name() == 'ASSIGNED'}"
+                th:action="@{/work-orders/{id}/block(id=${workOrder.id})}" method="post" class="form-grid">
+            <div class="full"><label>Block reason</label><input name="reason" required placeholder="Waiting on parts…"/></div>
+            <div class="full"><button class="btn btn-secondary" type="submit">Block</button></div>
+          </form>
+
+          <form th:if="${workOrder.status.name() == 'IN_PROGRESS'}"
+                th:action="@{/work-orders/{id}/complete(id=${workOrder.id})}" method="post" class="form-grid">
+            <div><label>Labor hours</label><input type="number" step="0.25" min="0" name="laborHours" required/></div>
+            <div><label>Parts cost</label><input type="number" step="0.01" min="0" name="partsCost" value="0"/></div>
+            <div class="full"><button class="btn" type="submit">Complete &amp; invoice</button></div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+</body>
+</html>
