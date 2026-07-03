@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Berth · Saltmarsh</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}"/>
+</head>
+<body>
+<div class="layout">
+  <div th:replace="~{fragments :: sidebar}"></div>
+  <main class="main">
+    <div class="page-header"><div><h2 th:text="${berthId != null} ? 'Edit berth' : 'Add berth'">Berth</h2><p>Harbor master inventory control.</p></div></div>
+    <div class="card"><div class="card-body">
+      <form th:action="${berthId != null} ? @{/berths/manage/{id}(id=${berthId})} : @{/berths/manage}"
+            th:object="${berthRequest}" method="post" class="form-grid">
+        <div><label>Code</label><input th:field="*{code}" required maxlength="16" placeholder="A-04"/></div>
+        <div><label>Pier</label><input th:field="*{pier}" required maxlength="32" placeholder="Alpha"/></div>
+        <div><label>Max length (ft)</label><input type="number" step="0.01" th:field="*{maxLengthFeet}" required/></div>
+        <div><label>Max draft (ft)</label><input type="number" step="0.01" th:field="*{maxDraftFeet}" required/></div>
+        <div><label>Type</label><select th:field="*{berthType}"><option th:each="t : ${berthTypes}" th:value="${t}" th:text="${t}"></option></select></div>
+        <div><label>Daily rate</label><input type="number" step="0.01" th:field="*{dailyRate}" required/></div>
+        <div><label>Status</label><select th:field="*{status}"><option th:each="s : ${berthStatuses}" th:value="${s}" th:text="${s}"></option></select></div>
+        <div class="full"><label>Notes</label><textarea th:field="*{notes}" rows="3" maxlength="500"></textarea></div>
+        <div class="full form-actions">
+          <button class="btn" type="submit">Save</button>
+          <a class="btn btn-secondary" th:href="@{/berths}">Cancel</a>
+        </div>
+      </form>
+    </div></div>
+  </main>
+</div>
+</body>
+</html>

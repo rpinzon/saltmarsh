@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security" lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Berths · Saltmarsh</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}"/>
+</head>
+<body>
+<div class="layout">
+  <div th:replace="~{fragments :: sidebar}"></div>
+  <main class="main">
+    <div th:replace="~{fragments :: flashes}"></div>
+    <div class="page-header">
+      <div><h2>Berths</h2><p>Inventory, capacity, rates, and availability search.</p></div>
+      <a class="btn" sec:authorize="hasAnyRole('HARBORMASTER','ADMIN')" th:href="@{/berths/manage/new}">Add berth</a>
+    </div>
+
+    <div class="card" style="margin-bottom:1.25rem;">
+      <div class="card-header"><h3>Find availability</h3></div>
+      <div class="card-body">
+        <form method="get" th:action="@{/berths}" class="form-grid">
+          <div><label>Start date</label><input type="date" name="startDate" th:value="${startDate}"/></div>
+          <div><label>End date</label><input type="date" name="endDate" th:value="${endDate}"/></div>
+          <div><label>Vessel length (ft)</label><input type="number" step="0.01" name="lengthFeet" th:value="${lengthFeet}" placeholder="32"/></div>
+          <div><label>Vessel draft (ft)</label><input type="number" step="0.01" name="draftFeet" th:value="${draftFeet}" placeholder="4.5"/></div>
+          <div class="full form-actions"><button class="btn" type="submit">Search open berths</button></div>
+        </form>
+        <div th:if="${available != null}" style="margin-top:1rem;">
+          <h3 style="margin:0 0 0.75rem; font-size:1rem;">Matching berths (<span th:text="${#lists.size(available)}">0</span>)</h3>
+          <div th:if="${#lists.isEmpty(available)}" class="empty">No berths fit those dates and dimensions. Try the waitlist.</div>
+          <table th:if="${!#lists.isEmpty(available)}">
+            <thead><tr><th>Code</th><th>Pier</th><th>Max L/D</th><th>Rate</th><th></th></tr></thead>
+            <tbody>
+            <tr th:each="b : ${available}">
+              <td class="mono" th:text="${b.code}">A-01</td>
+              <td th:text="${b.pier}">Alpha</td>
+              <td th:text="${b.maxLengthFeet + ' / ' + b.maxDraftFeet + ' ft'}">35/6</td>
+              <td th:text="'$' + ${b.dailyRate} + '/night'">$85</td>
+              <td><a class="btn btn-sm" th:href="@{/reservations/new}">Book</a></td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <table>
+        <thead><tr><th>Code</th><th>Pier</th><th>Type</th><th>Capacity</th><th>Daily rate</th><th>Status</th><th sec:authorize="hasAnyRole('HARBORMASTER','ADMIN')"></th></tr></thead>
+        <tbody>
+        <tr th:each="b : ${berths}">
+          <td class="mono" th:text="${b.code}">A-01</td>
+          <td th:text="${b.pier}">Alpha</td>
+          <td th:text="${b.berthType}">TRANSIENT</td>
+          <td th:text="${b.maxLengthFeet + ' ft × ' + b.maxDraftFeet + ' ft draft'}">35</td>
+          <td th:text="'$' + ${b.dailyRate}">85</td>
+          <td><span th:replace="~{fragments :: badge(${b.status})}"></span></td>
+          <td sec:authorize="hasAnyRole('HARBORMASTER','ADMIN')" class="actions">
+            <a class="btn btn-secondary btn-sm" th:href="@{/berths/manage/{id}/edit(id=${b.id})}">Edit</a>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>
+</body>
+</html>

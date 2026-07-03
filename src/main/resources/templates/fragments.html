@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<body>
+<aside th:fragment="sidebar" class="sidebar">
+  <div class="brand">
+    <div class="brand-mark">S</div>
+    <div>
+      <h1>Saltmarsh</h1>
+      <p>Marina Operations</p>
+    </div>
+  </div>
+  <nav class="nav">
+    <a th:href="@{/}">Dashboard</a>
+    <a th:href="@{/berths}">Berths</a>
+    <a th:href="@{/vessels}">Vessels</a>
+    <a th:href="@{/reservations}">Reservations</a>
+    <a th:href="@{/waitlist}">Waitlist</a>
+    <a th:href="@{/work-orders}">Work Orders</a>
+    <a th:href="@{/invoices}">Invoices</a>
+  </nav>
+  <div class="user-chip" sec:authorize="isAuthenticated()">
+    <strong th:text="${currentUser != null ? currentUser.fullName : 'User'}">User</strong>
+    <span th:text="${currentRole}">ROLE</span>
+    <form th:action="@{/logout}" method="post">
+      <button class="btn btn-secondary btn-sm" type="submit">Sign out</button>
+    </form>
+  </div>
+</aside>
+
+<div th:fragment="flashes">
+  <div th:if="${success}" class="flash flash-success" th:text="${success}"></div>
+  <div th:if="${error}" class="flash flash-error" th:text="${error}"></div>
+</div>
+
+<span th:fragment="badge (status)" class="badge"
+      th:classappend="'badge-' + ${#strings.toLowerCase(status)}"
+      th:text="${status}">STATUS</span>
+</body>
+</html>

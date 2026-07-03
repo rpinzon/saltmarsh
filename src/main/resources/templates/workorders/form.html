@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>New work order · Saltmarsh</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}"/>
+</head>
+<body>
+<div class="layout">
+  <div th:replace="~{fragments :: sidebar}"></div>
+  <main class="main">
+    <div class="page-header"><div><h2>New work order</h2><p>Report an issue for a vessel, berth, or general dock work.</p></div></div>
+    <div class="card"><div class="card-body">
+      <form th:action="@{/work-orders}" th:object="${workOrderRequest}" method="post" class="form-grid">
+        <div class="full"><label>Title</label><input th:field="*{title}" required maxlength="160"/></div>
+        <div class="full"><label>Description</label><textarea th:field="*{description}" rows="4" required maxlength="2000"></textarea></div>
+        <div><label>Priority</label><select th:field="*{priority}"><option th:each="p : ${priorities}" th:value="${p}" th:text="${p}"></option></select></div>
+        <div><label>Category</label><select th:field="*{category}"><option th:each="c : ${categories}" th:value="${c}" th:text="${c}"></option></select></div>
+        <div>
+          <label>Vessel (optional)</label>
+          <select th:field="*{vesselId}">
+            <option value="">—</option>
+            <option th:each="v : ${vessels}" th:value="${v.id}" th:text="${v.name}"></option>
+          </select>
+        </div>
+        <div>
+          <label>Berth (optional)</label>
+          <select th:field="*{berthId}">
+            <option value="">—</option>
+            <option th:each="b : ${berths}" th:value="${b.id}" th:text="${b.code}"></option>
+          </select>
+        </div>
+        <div class="full form-actions">
+          <button class="btn" type="submit">Create</button>
+          <a class="btn btn-secondary" th:href="@{/work-orders}">Cancel</a>
+        </div>
+      </form>
+    </div></div>
+  </main>
+</div>
+</body>
+</html>

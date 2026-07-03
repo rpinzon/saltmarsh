@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Invoices · Saltmarsh</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}"/>
+</head>
+<body>
+<div class="layout">
+  <div th:replace="~{fragments :: sidebar}"></div>
+  <main class="main">
+    <div th:replace="~{fragments :: flashes}"></div>
+    <div class="page-header">
+      <div><h2>Invoices</h2><p>Generated from check-outs, cancellation fees, and completed work orders.</p></div>
+    </div>
+    <div class="card">
+      <div class="card-body" th:if="${#lists.isEmpty(invoices)}"><div class="empty">No invoices yet</div></div>
+      <table th:if="${!#lists.isEmpty(invoices)}">
+        <thead><tr><th>Number</th><th>Customer</th><th>Status</th><th>Total</th><th>Issued</th><th></th></tr></thead>
+        <tbody>
+        <tr th:each="i : ${invoices}">
+          <td class="mono" th:text="${i.invoiceNumber}">INV</td>
+          <td th:text="${i.customer.fullName}">Customer</td>
+          <td><span th:replace="~{fragments :: badge(${i.status})}"></span></td>
+          <td th:text="'$' + ${i.totalAmount}">0</td>
+          <td th:text="${i.issuedAt != null ? i.issuedAt : '—'}">—</td>
+          <td><a th:href="@{/invoices/{id}(id=${i.id})}">Open</a></td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>
+</body>
+</html>

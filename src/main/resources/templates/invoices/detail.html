@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security" lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title th:text="${invoice.invoiceNumber}">Invoice</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}"/>
+</head>
+<body>
+<div class="layout">
+  <div th:replace="~{fragments :: sidebar}"></div>
+  <main class="main">
+    <div th:replace="~{fragments :: flashes}"></div>
+    <div class="page-header">
+      <div>
+        <h2 class="mono" th:text="${invoice.invoiceNumber}">INV</h2>
+        <p><span th:replace="~{fragments :: badge(${invoice.status})}"></span>
+          <span class="muted" th:text="' · ' + ${invoice.customer.fullName}"></span></p>
+      </div>
+      <div class="actions" sec:authorize="hasAnyRole('STAFF','HARBORMASTER','ADMIN')">
+        <form th:if="${invoice.status.name() == 'ISSUED'}" th:action="@{/invoices/{id}/pay(id=${invoice.id})}" method="post">
+          <button class="btn" type="submit">Mark paid</button>
+        </form>
+        <form th:if="${invoice.status.name() == 'DRAFT' or invoice.status.name() == 'ISSUED'}"
+              th:action="@{/invoices/{id}/void(id=${invoice.id})}" method="post">
+          <button class="btn btn-danger" type="submit">Void</button>
+        </form>
+        <a class="btn btn-secondary" th:href="@{/invoices}">Back</a>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:1rem;"><div class="card-body detail-grid">
+      <div class="detail-item"><div class="label">Subtotal</div><div class="value" th:text="'$' + ${invoice.subtotal}">0</div></div>
+      <div class="detail-item"><div class="label">Tax (8%)</div><div class="value" th:text="'$' + ${invoice.taxAmount}">0</div></div>
+      <div class="detail-item"><div class="label">Total</div><div class="value" th:text="'$' + ${invoice.totalAmount}">0</div></div>
+      <div class="detail-item" th:if="${invoice.reservation != null}"><div class="label">Reservation</div>
+        <div class="value"><a th:href="@{/reservations/{id}(id=${invoice.reservation.id})}" th:text="'#' + ${invoice.reservation.id}">#1</a></div></div>
+      <div class="detail-item" th:if="${invoice.workOrder != null}"><div class="label">Work order</div>
+        <div class="value"><a th:href="@{/work-orders/{id}(id=${invoice.workOrder.id})}" th:text="'#' + ${invoice.workOrder.id}">#1</a></div></div>
+    </div></div>
+
+    <div class="card">
+      <div class="card-header"><h3>Line items</h3></div>
+      <table>
+        <thead><tr><th>Description</th><th>Qty</th><th>Unit price</th><th>Line total</th></tr></thead>
+        <tbody>
+        <tr th:each="li : ${invoice.lineItems}">
+          <td th:text="${li.description}">Item</td>
+          <td th:text="${li.quantity}">1</td>
+          <td th:text="'$' + ${li.unitPrice}">0</td>
+          <td th:text="'$' + ${li.lineTotal}">0</td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>
+</body>
+</html>

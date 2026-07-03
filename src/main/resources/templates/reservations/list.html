@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Reservations · Saltmarsh</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}"/>
+</head>
+<body>
+<div class="layout">
+  <div th:replace="~{fragments :: sidebar}"></div>
+  <main class="main">
+    <div th:replace="~{fragments :: flashes}"></div>
+    <div class="page-header">
+      <div><h2>Reservations</h2><p>Stay lifecycle from pending through checkout and billing.</p></div>
+      <a class="btn" th:href="@{/reservations/new}">New reservation</a>
+    </div>
+    <div class="card">
+      <div class="card-body" th:if="${#lists.isEmpty(reservations)}"><div class="empty">No reservations</div></div>
+      <table th:if="${!#lists.isEmpty(reservations)}">
+        <thead><tr><th>#</th><th>Vessel</th><th>Berth</th><th>Dates</th><th>Nights</th><th>Total</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+        <tr th:each="r : ${reservations}">
+          <td class="mono" th:text="${r.id}">1</td>
+          <td th:text="${r.vessel.name}">Boat</td>
+          <td class="mono" th:text="${r.berth.code}">A-01</td>
+          <td th:text="${r.startDate + ' → ' + r.endDate}">dates</td>
+          <td th:text="${r.nights()}">3</td>
+          <td th:text="'$' + ${r.totalAmount}">100</td>
+          <td><span th:replace="~{fragments :: badge(${r.status})}"></span></td>
+          <td><a th:href="@{/reservations/{id}(id=${r.id})}">Open</a></td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>
+</body>
+</html>

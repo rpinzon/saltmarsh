@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security" lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title th:text="'Reservation #' + ${reservation.id}">Reservation</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}"/>
+</head>
+<body>
+<div class="layout">
+  <div th:replace="~{fragments :: sidebar}"></div>
+  <main class="main">
+    <div th:replace="~{fragments :: flashes}"></div>
+    <div class="page-header">
+      <div>
+        <h2 th:text="'Reservation #' + ${reservation.id}">Reservation</h2>
+        <p><span th:replace="~{fragments :: badge(${reservation.status})}"></span></p>
+      </div>
+      <div class="actions">
+        <form sec:authorize="hasAnyRole('STAFF','HARBORMASTER','ADMIN')"
+              th:if="${reservation.status.name() == 'PENDING'}"
+              th:action="@{/reservations/{id}/confirm(id=${reservation.id})}" method="post">
+          <button class="btn" type="submit">Confirm</button>
+        </form>
+        <form sec:authorize="hasAnyRole('STAFF','HARBORMASTER','ADMIN')"
+              th:if="${reservation.status.name() == 'CONFIRMED'}"
+              th:action="@{/reservations/{id}/check-in(id=${reservation.id})}" method="post">
+          <button class="btn" type="submit">Check in</button>
+        </form>
+        <form sec:authorize="hasAnyRole('STAFF','HARBORMASTER','ADMIN')"
+              th:if="${reservation.status.name() == 'CHECKED_IN'}"
+              th:action="@{/reservations/{id}/check-out(id=${reservation.id})}" method="post">
+          <button class="btn" type="submit">Check out &amp; invoice</button>
+        </form>
+        <form sec:authorize="hasAnyRole('STAFF','HARBORMASTER','ADMIN')"
+              th:if="${reservation.status.name() == 'CONFIRMED'}"
+              th:action="@{/reservations/{id}/no-show(id=${reservation.id})}" method="post">
+          <button class="btn btn-secondary" type="submit">Mark no-show</button>
+        </form>
+        <form th:if="${reservation.status.name() == 'PENDING' or reservation.status.name() == 'CONFIRMED'}"
+              th:action="@{/reservations/{id}/cancel(id=${reservation.id})}" method="post">
+          <button class="btn btn-danger" type="submit">Cancel</button>
+        </form>
+        <a class="btn btn-secondary" th:href="@{/reservations}">Back</a>
+      </div>
+    </div>
+
+    <div class="card"><div class="card-body detail-grid">
+      <div class="detail-item"><div class="label">Vessel</div><div class="value" th:text="${reservation.vessel.name}">Boat</div></div>
+      <div class="detail-item"><div class="label">Owner</div><div class="value" th:text="${reservation.vessel.owner.fullName}">Owner</div></div>
+      <div class="detail-item"><div class="label">Berth</div><div class="value mono" th:text="${reservation.berth.code + ' (' + reservation.berth.pier + ')'}">A-01</div></div>
+      <div class="detail-item"><div class="label">Dates</div><div class="value" th:text="${reservation.startDate + ' → ' + reservation.endDate}">dates</div></div>
+      <div class="detail-item"><div class="label">Nights</div><div class="value" th:text="${reservation.nights()}">3</div></div>
+      <div class="detail-item"><div class="label">Nightly rate</div><div class="value" th:text="'$' + ${reservation.nightlyRate}">85</div></div>
+      <div class="detail-item"><div class="label">Total</div><div class="value" th:text="'$' + ${reservation.totalAmount}">255</div></div>
+      <div class="detail-item"><div class="label">Late cancel fee</div><div class="value" th:text="'$' + ${reservation.lateCancelFee}">0</div></div>
+      <div class="detail-item"><div class="label">Created by</div><div class="value" th:text="${reservation.createdBy.fullName}">User</div></div>
+      <div class="detail-item" th:if="${reservation.notes != null}"><div class="label">Notes</div><div class="value" th:text="${reservation.notes}">notes</div></div>
+    </div></div>
+  </main>
+</div>
+</body>
+</html>

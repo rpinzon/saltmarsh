@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Waitlist · Saltmarsh</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}"/>
+</head>
+<body>
+<div class="layout">
+  <div th:replace="~{fragments :: sidebar}"></div>
+  <main class="main">
+    <div th:replace="~{fragments :: flashes}"></div>
+    <div class="page-header">
+      <div><h2>Waitlist</h2><p>FIFO queue. Cancellations and no-shows can generate 24-hour berth offers.</p></div>
+      <a class="btn" th:href="@{/waitlist/new}">Join waitlist</a>
+    </div>
+    <div class="card">
+      <div class="card-body" th:if="${#lists.isEmpty(entries)}"><div class="empty">Waitlist is empty</div></div>
+      <table th:if="${!#lists.isEmpty(entries)}">
+        <thead><tr><th>#</th><th>Vessel</th><th>Owner</th><th>Preferred dates</th><th>Status</th><th>Offer</th><th></th></tr></thead>
+        <tbody>
+        <tr th:each="e : ${entries}">
+          <td class="mono" th:text="${e.id}">1</td>
+          <td th:text="${e.vessel.name}">Boat</td>
+          <td th:text="${e.vessel.owner.fullName}">Owner</td>
+          <td th:text="${e.preferredStart + ' → ' + e.preferredEnd}">dates</td>
+          <td><span th:replace="~{fragments :: badge(${e.status})}"></span></td>
+          <td>
+            <span th:if="${e.offeredBerth != null}" th:text="${e.offeredBerth.code + ' until ' + e.offeredUntil}">A-01</span>
+            <span th:if="${e.offeredBerth == null}" class="muted">—</span>
+          </td>
+          <td class="actions">
+            <form th:if="${e.status.name() == 'OFFERED'}" th:action="@{/waitlist/{id}/accept(id=${e.id})}" method="post">
+              <button class="btn btn-sm" type="submit">Accept offer</button>
+            </form>
+            <form th:if="${e.status.name() == 'WAITING' or e.status.name() == 'OFFERED'}"
+                  th:action="@{/waitlist/{id}/cancel(id=${e.id})}" method="post">
+              <button class="btn btn-danger btn-sm" type="submit">Cancel</button>
+            </form>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>
+</body>
+</html>
