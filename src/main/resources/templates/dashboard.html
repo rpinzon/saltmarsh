@@ -22,7 +22,7 @@
       </div>
     </div>
 
-    <div class="stats">
+    <div class="stats" th:if="${stats['scope'] == 'marina'}">
       <div class="stat-card"><div class="label">Berths</div><div class="value" th:text="${stats['totalBerths']}">0</div></div>
       <div class="stat-card"><div class="label">Available</div><div class="value" th:text="${stats['availableBerths']}">0</div></div>
       <div class="stat-card"><div class="label">Docked now</div><div class="value" th:text="${stats['dockedNow']}">0</div></div>
@@ -30,10 +30,19 @@
       <div class="stat-card"><div class="label">Open work</div><div class="value" th:text="${stats['openWorkOrders']}">0</div></div>
       <div class="stat-card"><div class="label">Unpaid invoices</div><div class="value" th:text="${stats['issuedInvoices']}">0</div></div>
     </div>
+    <div class="stats" th:if="${stats['scope'] == 'personal'}">
+      <div class="stat-card"><div class="label">My vessels docked</div><div class="value" th:text="${stats['dockedNow']}">0</div></div>
+      <div class="stat-card"><div class="label">My pending stays</div><div class="value" th:text="${stats['pendingReservations']}">0</div></div>
+      <div class="stat-card"><div class="label">My confirmed stays</div><div class="value" th:text="${stats['confirmedReservations']}">0</div></div>
+      <div class="stat-card"><div class="label">My unpaid invoices</div><div class="value" th:text="${stats['issuedInvoices']}">0</div></div>
+    </div>
 
     <div class="grid-2">
       <div class="card">
-        <div class="card-header"><h3>Currently docked</h3><a th:href="@{/reservations}">View all</a></div>
+        <div class="card-header">
+          <h3 th:text="${stats['scope'] == 'marina'} ? 'Currently docked' : 'My vessels docked'">Currently docked</h3>
+          <a th:href="@{/reservations}">View all</a>
+        </div>
         <div class="card-body" th:if="${#lists.isEmpty(docked)}"><div class="empty">No vessels checked in</div></div>
         <table th:if="${!#lists.isEmpty(docked)}">
           <thead><tr><th>Berth</th><th>Vessel</th><th>Until</th></tr></thead>

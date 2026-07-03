@@ -65,5 +65,17 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             """)
     List<Reservation> findCurrentlyDocked();
 
+    @Query("""
+            select r from Reservation r
+            join fetch r.vessel v
+            join fetch r.berth
+            where r.status = com.saltmarsh.domain.enums.ReservationStatus.CHECKED_IN
+              and v.owner.id = :ownerId
+            order by r.berth.code asc
+            """)
+    List<Reservation> findCurrentlyDockedByOwner(@Param("ownerId") Long ownerId);
+
     long countByStatus(ReservationStatus status);
+
+    long countByVesselOwnerIdAndStatus(Long ownerId, ReservationStatus status);
 }

@@ -23,8 +23,8 @@
           <td th:text="${v.name}">Name</td>
           <td class="mono" th:text="${v.registrationNumber}">REG</td>
           <td th:text="${v.vesselType}">SAIL</td>
-          <td th:text="${v.lengthFeet} + ' ft'">32</td>
-          <td th:text="${v.draftFeet} + ' ft'">4</td>
+          <td th:text="|${v.lengthFeet} ft|">32</td>
+          <td th:text="|${v.draftFeet} ft|">4</td>
           <td th:text="${v.owner.fullName}">Owner</td>
           <td class="actions">
             <a class="btn btn-secondary btn-sm" th:href="@{/vessels/{id}/edit(id=${v.id})}">Edit</a>

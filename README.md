@@ -20,16 +20,18 @@ Built to be **runnable end-to-end** with a single command on a developer machine
 ### Business rules worth noting
 
 - A vessel may only occupy a berth if **length and draft fit**.
-- Overlapping active reservations on the same berth are **rejected**.
+- Overlapping active reservations on the same berth are **rejected** (berth row is locked for the booking transaction; active waitlist offers also hold inventory).
 - Boaters create **PENDING** bookings; staff create **CONFIRMED** bookings.
 - Cancel after confirmation within the free-cancel window (default **48h**) incurs a **25%** late fee invoice.
-- Checkout and billable work-order completion **issue invoices** (8% tax).
-- Waitlist promotion is **FIFO** among fitting vessels when a berth frees.
+- Checkout and billable work-order completion **issue invoices** (8% tax). Checkout bills the **full reserved stay** (non-refundable unused nights on early departure) and promotes the waitlist for the freed dates.
+- Waitlist promotion is **FIFO** among fitting vessels when a berth frees; an **OFFERED** berth is held for **24h**. Expired offers return to **WAITING**.
+- Invoice numbers are allocated from a **database counter** (safe across restarts).
+- Demo privileged accounts are seeded only under the **`local`** profile.
 
 ## Requirements
 
 - **Java 21+**
-- **Maven 3.9+** (or use a local Maven install)
+- **Maven Wrapper** included (`./mvnw`); a system Maven 3.9+ install also works
 - Optional: **Docker** / Docker Compose for PostgreSQL deployment
 
 This repo was verified with Temurin/Zulu **Java 21** and Maven **3.9**.
@@ -46,11 +48,13 @@ This repo was verified with Temurin/Zulu **Java 21** and Maven **3.9**.
 
 Open **http://localhost:8080**
 
-Data is stored in a local file database under `./data/saltmarsh` (created on first run). Demo users are seeded automatically when the database is empty.
+Data is stored in a local file database under `./data/saltmarsh` (created on first run). Demo users are seeded automatically when the database is empty **on the `local` profile only** (the default).
 
-### Demo logins
+### Demo logins (`local` profile only)
 
-Password for **all** accounts: `password`
+Password for **all** demo accounts: `password`
+
+These accounts are **not** created under the `postgres` profile (Compose). Provision real users before using non-local deployments.
 
 | Email | Role | Good for |
 |-------|------|----------|
@@ -96,7 +100,7 @@ docker compose up --build
 App: **http://localhost:8080**  
 DB: `localhost:5432`, database/user/password `saltmarsh` / `saltmarsh` / `saltmarsh`
 
-Profile `postgres` is activated automatically by the compose file.
+Profile `postgres` is activated automatically by the compose file. **No demo users are seeded** in this profile — create accounts via a controlled bootstrap process or SQL before signing in. Session cookies use the `Secure` flag under `postgres` (expect TLS termination).
 
 ### Run app locally against Compose DB only
 

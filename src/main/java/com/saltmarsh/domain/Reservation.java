@@ -17,6 +17,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -99,7 +100,7 @@ public class Reservation {
 
     public static BigDecimal calculateTotal(BigDecimal nightlyRate, LocalDate start, LocalDate end) {
         long nights = ChronoUnit.DAYS.between(start, end);
-        return nightlyRate.multiply(BigDecimal.valueOf(nights));
+        return nightlyRate.multiply(BigDecimal.valueOf(nights)).setScale(2, RoundingMode.HALF_UP);
     }
 
     public Long getId() { return id; }

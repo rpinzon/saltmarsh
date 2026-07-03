@@ -12,6 +12,7 @@ import com.saltmarsh.exception.BusinessException;
 import com.saltmarsh.exception.ConflictException;
 import com.saltmarsh.exception.ForbiddenException;
 import com.saltmarsh.exception.NotFoundException;
+import com.saltmarsh.repository.BerthRepository;
 import com.saltmarsh.repository.ReservationRepository;
 import com.saltmarsh.repository.VesselRepository;
 import com.saltmarsh.repository.WaitlistEntryRepository;
@@ -29,18 +30,27 @@ public class WaitlistService {
     private final WaitlistEntryRepository waitlistEntryRepository;
     private final VesselRepository vesselRepository;
     private final ReservationRepository reservationRepository;
+    private final BerthRepository berthRepository;
     private final AuditService auditService;
+    private final ReservationService reservationService;
+    private final WaitlistOfferExpiryService offerExpiryService;
     private final Clock clock;
 
     public WaitlistService(WaitlistEntryRepository waitlistEntryRepository,
                            VesselRepository vesselRepository,
                            ReservationRepository reservationRepository,
+                           BerthRepository berthRepository,
                            AuditService auditService,
+                           ReservationService reservationService,
+                           WaitlistOfferExpiryService offerExpiryService,
                            Clock clock) {
         this.waitlistEntryRepository = waitlistEntryRepository;
         this.vesselRepository = vesselRepository;
         this.reservationRepository = reservationRepository;
+        this.berthRepository = berthRepository;
         this.auditService = auditService;
+        this.reservationService = reservationService;
+        this.offerExpiryService = offerExpiryService;
         this.clock = clock;
     }
 
@@ -94,6 +104,9 @@ public class WaitlistService {
 
     @Transactional
     public Reservation acceptOffer(Long id, UserAccount actor) {
+        // Commit expiries independently so a failed accept cannot leave OFFERED forever.
+        offerExpiryService.returnExpiredOffersToQueue();
+
         WaitlistEntry entry = waitlistEntryRepository.findDetailedById(id)
                 .orElseThrow(() -> new NotFoundException("Waitlist entry not found"));
 
@@ -102,28 +115,31 @@ public class WaitlistService {
             throw new ForbiddenException("You cannot accept this offer");
         }
         if (entry.getStatus() != WaitlistStatus.OFFERED) {
-            throw new BusinessException("NOT_OFFERED", "No active offer on this waitlist entry");
+            throw new BusinessException("NOT_OFFERED",
+                    "No active offer on this waitlist entry (it may have expired and returned to the queue)");
         }
-        if (entry.getOfferedUntil() != null && entry.getOfferedUntil().isBefore(Instant.now(clock))) {
-            entry.setStatus(WaitlistStatus.EXPIRED);
-            entry.setOfferedBerth(null);
-            entry.setOfferedUntil(null);
+        if (entry.getOfferedUntil() != null && !entry.getOfferedUntil().isAfter(Instant.now(clock))) {
+            // Defensive: expiry service should have already returned this to WAITING.
             throw new BusinessException("OFFER_EXPIRED", "The berth offer has expired");
         }
 
-        Berth berth = entry.getOfferedBerth();
-        if (berth == null || !berth.isBookable()) {
+        Long berthId = entry.getOfferedBerth() != null ? entry.getOfferedBerth().getId() : null;
+        if (berthId == null) {
+            throw new ConflictException("Offered berth is no longer available");
+        }
+
+        Berth berth = berthRepository.findByIdForUpdate(berthId)
+                .orElseThrow(() -> new ConflictException("Offered berth is no longer available"));
+        if (!berth.isBookable()) {
             throw new ConflictException("Offered berth is no longer available");
         }
         if (!entry.getVessel().fitsIn(berth)) {
             throw new BusinessException("VESSEL_TOO_LARGE", "Vessel no longer fits the offered berth");
         }
-        if (reservationRepository.hasOverlapping(berth.getId(),
-                entry.getPreferredStart(), entry.getPreferredEnd(),
-                List.of(ReservationStatus.PENDING, ReservationStatus.CONFIRMED, ReservationStatus.CHECKED_IN),
-                null)) {
-            throw new ConflictException("Berth was taken before the offer was accepted");
-        }
+
+        // Exclude this waitlist hold when checking occupancy; it is being converted.
+        reservationService.assertBerthFree(
+                berth.getId(), entry.getPreferredStart(), entry.getPreferredEnd(), entry.getId());
 
         Reservation reservation = new Reservation();
         reservation.setVessel(entry.getVessel());
@@ -139,6 +155,8 @@ public class WaitlistService {
 
         Reservation saved = reservationRepository.save(reservation);
         entry.setStatus(WaitlistStatus.ACCEPTED);
+        entry.setOfferedBerth(null);
+        entry.setOfferedUntil(null);
 
         auditService.record(actor, "WAITLIST_ACCEPTED", "WaitlistEntry", entry.getId(),
                 "Created reservation #" + saved.getId() + " on berth " + berth.getCode());

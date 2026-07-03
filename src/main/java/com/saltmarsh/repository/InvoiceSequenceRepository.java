@@ -1,0 +1,16 @@
+package com.saltmarsh.repository;
+
+import com.saltmarsh.domain.InvoiceSequence;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+
+import java.util.Optional;
+
+public interface InvoiceSequenceRepository extends JpaRepository<InvoiceSequence, Integer> {
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select s from InvoiceSequence s where s.id = 1")
+    Optional<InvoiceSequence> lockSingleton();
+}

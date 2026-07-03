@@ -37,8 +37,12 @@ public class DataInitializer {
 
     private static final Logger log = LoggerFactory.getLogger(DataInitializer.class);
 
+    /**
+     * Demo users and sample marina data are for the local developer profile only.
+     * Never seed privileged accounts with a shared password on postgres/production-like profiles.
+     */
     @Bean
-    @Profile("!test")
+    @Profile("local")
     CommandLineRunner seedData(UserAccountRepository users,
                                VesselRepository vessels,
                                BerthRepository berths,

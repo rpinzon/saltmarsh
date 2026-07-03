@@ -182,3 +182,15 @@ CREATE TABLE audit_event (
 
 CREATE INDEX idx_audit_entity ON audit_event (entity_type, entity_id);
 CREATE INDEX idx_audit_created ON audit_event (created_at);
+
+-- Single-row counter for collision-free invoice numbers across restarts and instances.
+CREATE TABLE invoice_sequence (
+    id          INT PRIMARY KEY,
+    next_value  BIGINT NOT NULL
+);
+
+INSERT INTO invoice_sequence (id, next_value) VALUES (1, 1000);
+
+CREATE INDEX idx_invoice_reservation ON invoice (reservation_id);
+CREATE INDEX idx_invoice_work_order ON invoice (work_order_id);
+CREATE INDEX idx_wl_offered_berth ON waitlist_entry (offered_berth_id, status);

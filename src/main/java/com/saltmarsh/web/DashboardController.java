@@ -34,8 +34,8 @@ public class DashboardController {
     @GetMapping("/")
     public String home(Model model) {
         UserAccount user = currentUserService.requireCurrentUser();
-        model.addAttribute("stats", dashboardService.stats());
-        model.addAttribute("docked", reservationService.currentlyDocked());
+        model.addAttribute("stats", dashboardService.statsFor(user));
+        model.addAttribute("docked", reservationService.currentlyDockedFor(user));
         model.addAttribute("myReservations", reservationService.listFor(user).stream().limit(8).toList());
         model.addAttribute("workOrders", workOrderService.listFor(user).stream().limit(8).toList());
         if (user.getRole().isStaffOrAbove()) {

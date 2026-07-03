@@ -50,8 +50,12 @@ class ReservationFlowIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        // Unique codes/emails so this test coexists with other integration suites
+        // sharing the in-memory H2 (some tests commit outside @Transactional).
+        String suffix = String.valueOf(System.nanoTime());
+
         boater = new UserAccount();
-        boater.setEmail("flow-boater@example.com");
+        boater.setEmail("flow-boater-" + suffix + "@example.com");
         boater.setFullName("Flow Boater");
         boater.setRole(Role.BOATER);
         boater.setPasswordHash(passwordEncoder.encode("password"));
@@ -61,7 +65,7 @@ class ReservationFlowIntegrationTest {
         vessel = new Vessel();
         vessel.setOwner(boater);
         vessel.setName("Flow Boat");
-        vessel.setRegistrationNumber("FLOW-001");
+        vessel.setRegistrationNumber("FLOW-" + suffix);
         vessel.setLengthFeet(new BigDecimal("28"));
         vessel.setBeamFeet(new BigDecimal("9"));
         vessel.setDraftFeet(new BigDecimal("3"));
@@ -70,7 +74,7 @@ class ReservationFlowIntegrationTest {
         vessel = vessels.save(vessel);
 
         berth = new Berth();
-        berth.setCode("T-99");
+        berth.setCode("T" + suffix.substring(Math.max(0, suffix.length() - 8)));
         berth.setPier("Test");
         berth.setMaxLengthFeet(new BigDecimal("40"));
         berth.setMaxDraftFeet(new BigDecimal("8"));
@@ -84,6 +88,7 @@ class ReservationFlowIntegrationTest {
     void boaterCanCreatePendingReservation() throws Exception {
         LocalDate start = LocalDate.now().plusDays(5);
         LocalDate end = start.plusDays(2);
+        long before = reservations.count();
 
         mockMvc.perform(post("/reservations")
                         .with(user(new SaltmarshUserDetails(boater)))
@@ -95,8 +100,12 @@ class ReservationFlowIntegrationTest {
                         .param("notes", "integration test"))
                 .andExpect(status().is3xxRedirection());
 
-        assertEquals(1, reservations.count());
-        assertEquals("PENDING", reservations.findAll().getFirst().getStatus().name());
-        assertEquals(new BigDecimal("100.00"), reservations.findAll().getFirst().getTotalAmount());
+        assertEquals(before + 1, reservations.count());
+        var created = reservations.findAll().stream()
+                .filter(r -> r.getVessel().getId().equals(vessel.getId()))
+                .findFirst()
+                .orElseThrow();
+        assertEquals("PENDING", created.getStatus().name());
+        assertEquals(new BigDecimal("100.00"), created.getTotalAmount());
     }
 }

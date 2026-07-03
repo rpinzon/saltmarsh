@@ -97,8 +97,10 @@ class ReservationServiceTest {
         LocalDate start = LocalDate.of(2026, 6, 20);
         LocalDate end = LocalDate.of(2026, 6, 23);
         when(vesselRepository.findByIdWithOwner(10L)).thenReturn(Optional.of(vessel));
-        when(berthRepository.findById(20L)).thenReturn(Optional.of(berth));
+        when(berthRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(berth));
         when(reservationRepository.hasOverlapping(eq(20L), eq(start), eq(end), anyList(), isNull()))
+                .thenReturn(false);
+        when(waitlistEntryRepository.hasActiveOfferOccupying(eq(20L), eq(start), eq(end), any(), isNull()))
                 .thenReturn(false);
         when(reservationRepository.save(any(Reservation.class))).thenAnswer(inv -> {
             Reservation r = inv.getArgument(0);
@@ -127,8 +129,23 @@ class ReservationServiceTest {
         LocalDate start = LocalDate.of(2026, 6, 20);
         LocalDate end = LocalDate.of(2026, 6, 23);
         when(vesselRepository.findByIdWithOwner(10L)).thenReturn(Optional.of(vessel));
-        when(berthRepository.findById(20L)).thenReturn(Optional.of(berth));
+        when(berthRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(berth));
         when(reservationRepository.hasOverlapping(eq(20L), eq(start), eq(end), anyList(), isNull()))
+                .thenReturn(true);
+
+        ReservationRequest request = new ReservationRequest(10L, 20L, start, end, null);
+        assertThrows(ConflictException.class, () -> service.create(request, boater));
+    }
+
+    @Test
+    void rejectsActiveWaitlistHold() {
+        LocalDate start = LocalDate.of(2026, 6, 20);
+        LocalDate end = LocalDate.of(2026, 6, 23);
+        when(vesselRepository.findByIdWithOwner(10L)).thenReturn(Optional.of(vessel));
+        when(berthRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(berth));
+        when(reservationRepository.hasOverlapping(eq(20L), eq(start), eq(end), anyList(), isNull()))
+                .thenReturn(false);
+        when(waitlistEntryRepository.hasActiveOfferOccupying(eq(20L), eq(start), eq(end), any(), isNull()))
                 .thenReturn(true);
 
         ReservationRequest request = new ReservationRequest(10L, 20L, start, end, null);
@@ -141,7 +158,7 @@ class ReservationServiceTest {
         LocalDate start = LocalDate.of(2026, 6, 20);
         LocalDate end = LocalDate.of(2026, 6, 23);
         when(vesselRepository.findByIdWithOwner(10L)).thenReturn(Optional.of(vessel));
-        when(berthRepository.findById(20L)).thenReturn(Optional.of(berth));
+        when(berthRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(berth));
 
         ReservationRequest request = new ReservationRequest(10L, 20L, start, end, null);
         assertThrows(BusinessException.class, () -> service.create(request, boater));
@@ -152,17 +169,16 @@ class ReservationServiceTest {
         LocalDate start = LocalDate.of(2026, 6, 20);
         LocalDate end = LocalDate.of(2026, 6, 21);
         when(vesselRepository.findByIdWithOwner(10L)).thenReturn(Optional.of(vessel));
-        when(berthRepository.findById(20L)).thenReturn(Optional.of(berth));
+        when(berthRepository.findByIdForUpdate(20L)).thenReturn(Optional.of(berth));
         when(reservationRepository.hasOverlapping(eq(20L), eq(start), eq(end), anyList(), isNull()))
+                .thenReturn(false);
+        when(waitlistEntryRepository.hasActiveOfferOccupying(eq(20L), eq(start), eq(end), any(), isNull()))
                 .thenReturn(false);
         when(reservationRepository.save(any(Reservation.class))).thenAnswer(inv -> {
             Reservation r = inv.getArgument(0);
             r.setId(5L);
             return r;
         });
-        when(reservationRepository.findDetailedById(5L)).thenAnswer(inv -> Optional.of(inv.getArgument(0)));
-
-        // findDetailedById returns empty path - fix by returning saved status
         when(reservationRepository.findDetailedById(5L)).thenAnswer(inv -> {
             Reservation r = new Reservation();
             r.setId(5L);

@@ -7,7 +7,6 @@ import com.saltmarsh.domain.UserAccount;
 import com.saltmarsh.domain.Vessel;
 import com.saltmarsh.domain.WaitlistEntry;
 import com.saltmarsh.domain.enums.ReservationStatus;
-import com.saltmarsh.domain.enums.Role;
 import com.saltmarsh.domain.enums.WaitlistStatus;
 import com.saltmarsh.dto.ReservationRequest;
 import com.saltmarsh.exception.BusinessException;
@@ -87,6 +86,14 @@ public class ReservationService {
         return reservationRepository.findCurrentlyDocked();
     }
 
+    @Transactional(readOnly = true)
+    public List<Reservation> currentlyDockedFor(UserAccount actor) {
+        if (actor.getRole().isStaffOrAbove()) {
+            return reservationRepository.findCurrentlyDocked();
+        }
+        return reservationRepository.findCurrentlyDockedByOwner(actor.getId());
+    }
+
     @Transactional
     public Reservation create(ReservationRequest request, UserAccount actor) {
         LocalDate today = LocalDate.now(clock);
@@ -107,7 +114,8 @@ public class ReservationService {
         }
         assertOwnsVesselOrStaff(vessel, actor);
 
-        Berth berth = berthRepository.findById(request.berthId())
+        // Lock berth row first so concurrent create/accept serialize on inventory.
+        Berth berth = berthRepository.findByIdForUpdate(request.berthId())
                 .orElseThrow(() -> new NotFoundException("Berth not found"));
         if (!berth.isBookable()) {
             throw new ConflictException("Berth is not available for booking (status: " + berth.getStatus() + ")");
@@ -119,10 +127,7 @@ public class ReservationService {
                             + berth.getMaxDraftFeet() + " ft)");
         }
 
-        if (reservationRepository.hasOverlapping(
-                berth.getId(), request.startDate(), request.endDate(), OCCUPYING, null)) {
-            throw new ConflictException("Berth is already reserved for overlapping dates");
-        }
+        assertBerthFree(berth.getId(), request.startDate(), request.endDate(), null);
 
         Reservation reservation = new Reservation();
         reservation.setVessel(vessel);
@@ -178,9 +183,14 @@ public class ReservationService {
     public Reservation checkOut(Long id, UserAccount actor) {
         requireStaff(actor);
         Reservation reservation = getVisible(id, actor);
+        Berth berth = reservation.getBerth();
+        LocalDate start = reservation.getStartDate();
+        LocalDate end = reservation.getEndDate();
         reservation.setCheckedOutAt(Instant.now(clock));
         transition(reservation, ReservationStatus.CHECKED_OUT, actor, "RESERVATION_CHECKED_OUT");
+        // Full reserved-stay billing (non-refundable for unused tail nights after early departure).
         invoiceService.createFromReservation(reservation, actor);
+        promoteWaitlist(berth, start, end, actor);
         return reservation;
     }
 
@@ -221,6 +231,20 @@ public class ReservationService {
         return reservation;
     }
 
+    /**
+     * Ensures no overlapping occupying reservation or active waitlist offer holds the berth.
+     * Caller must hold a pessimistic lock on the berth row when creating bookings.
+     */
+    public void assertBerthFree(Long berthId, LocalDate start, LocalDate end, Long excludeWaitlistId) {
+        if (reservationRepository.hasOverlapping(berthId, start, end, OCCUPYING, null)) {
+            throw new ConflictException("Berth is already reserved for overlapping dates");
+        }
+        if (waitlistEntryRepository.hasActiveOfferOccupying(
+                berthId, start, end, Instant.now(clock), excludeWaitlistId)) {
+            throw new ConflictException("Berth is held by an active waitlist offer for overlapping dates");
+        }
+    }
+
     private BigDecimal calculateLateCancelFee(Reservation reservation) {
         if (reservation.getStatus() == ReservationStatus.PENDING) {
             return BigDecimal.ZERO;
@@ -238,15 +262,24 @@ public class ReservationService {
     }
 
     private void promoteWaitlist(Berth berth, LocalDate start, LocalDate end, UserAccount actor) {
-        expireStaleOffers();
+        returnExpiredOffersToQueue();
         List<WaitlistEntry> waiting = waitlistEntryRepository.findWaitingOverlapping(start, end);
         for (WaitlistEntry entry : waiting) {
             Vessel vessel = entry.getVessel();
             if (!vessel.fitsIn(berth)) {
                 continue;
             }
+            if (entry.getMinLengthFeet() != null
+                    && berth.getMaxLengthFeet().compareTo(entry.getMinLengthFeet()) < 0) {
+                continue;
+            }
             if (reservationRepository.hasOverlapping(berth.getId(),
                     entry.getPreferredStart(), entry.getPreferredEnd(), OCCUPYING, null)) {
+                continue;
+            }
+            if (waitlistEntryRepository.hasActiveOfferOccupying(
+                    berth.getId(), entry.getPreferredStart(), entry.getPreferredEnd(),
+                    Instant.now(clock), entry.getId())) {
                 continue;
             }
             entry.setStatus(WaitlistStatus.OFFERED);
@@ -258,11 +291,14 @@ public class ReservationService {
         }
     }
 
+    /**
+     * Expired offers return to WAITING so the entry re-enters FIFO rather than dying forever.
+     */
     @Transactional
-    public void expireStaleOffers() {
+    public void returnExpiredOffersToQueue() {
         List<WaitlistEntry> expired = waitlistEntryRepository.findExpiredOffers(Instant.now(clock));
         for (WaitlistEntry entry : expired) {
-            entry.setStatus(WaitlistStatus.EXPIRED);
+            entry.setStatus(WaitlistStatus.WAITING);
             entry.setOfferedBerth(null);
             entry.setOfferedUntil(null);
         }

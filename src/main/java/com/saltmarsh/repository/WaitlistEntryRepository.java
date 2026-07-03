@@ -63,4 +63,25 @@ public interface WaitlistEntryRepository extends JpaRepository<WaitlistEntry, Lo
               and w.offeredUntil < :now
             """)
     List<WaitlistEntry> findExpiredOffers(@Param("now") Instant now);
+
+    /**
+     * Active waitlist offers occupy the berth for the offered date range so other
+     * boaters cannot book through the hold window.
+     */
+    @Query("""
+            select case when count(w) > 0 then true else false end
+            from WaitlistEntry w
+            where w.offeredBerth.id = :berthId
+              and w.status = com.saltmarsh.domain.enums.WaitlistStatus.OFFERED
+              and (w.offeredUntil is null or w.offeredUntil > :now)
+              and w.preferredStart < :endDate
+              and w.preferredEnd > :startDate
+              and (:excludeId is null or w.id <> :excludeId)
+            """)
+    boolean hasActiveOfferOccupying(
+            @Param("berthId") Long berthId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("now") Instant now,
+            @Param("excludeId") Long excludeId);
 }

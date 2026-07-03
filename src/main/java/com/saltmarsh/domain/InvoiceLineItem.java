@@ -11,6 +11,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 @Entity
 @Table(name = "invoice_line_item")
@@ -39,9 +40,9 @@ public class InvoiceLineItem {
     public static InvoiceLineItem of(String description, BigDecimal quantity, BigDecimal unitPrice) {
         InvoiceLineItem item = new InvoiceLineItem();
         item.description = description;
-        item.quantity = quantity;
-        item.unitPrice = unitPrice;
-        item.lineTotal = quantity.multiply(unitPrice);
+        item.quantity = quantity.setScale(2, RoundingMode.HALF_UP);
+        item.unitPrice = unitPrice.setScale(2, RoundingMode.HALF_UP);
+        item.lineTotal = item.quantity.multiply(item.unitPrice).setScale(2, RoundingMode.HALF_UP);
         return item;
     }
 

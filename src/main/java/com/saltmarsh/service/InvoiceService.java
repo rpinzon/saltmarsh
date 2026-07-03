@@ -2,6 +2,7 @@ package com.saltmarsh.service;
 
 import com.saltmarsh.domain.Invoice;
 import com.saltmarsh.domain.InvoiceLineItem;
+import com.saltmarsh.domain.InvoiceSequence;
 import com.saltmarsh.domain.Reservation;
 import com.saltmarsh.domain.UserAccount;
 import com.saltmarsh.domain.WorkOrder;
@@ -10,6 +11,7 @@ import com.saltmarsh.exception.BusinessException;
 import com.saltmarsh.exception.ForbiddenException;
 import com.saltmarsh.exception.NotFoundException;
 import com.saltmarsh.repository.InvoiceRepository;
+import com.saltmarsh.repository.InvoiceSequenceRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,7 +22,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
 
 @Service
 public class InvoiceService {
@@ -28,14 +29,16 @@ public class InvoiceService {
     private static final BigDecimal TAX_RATE = new BigDecimal("0.08");
 
     private final InvoiceRepository invoiceRepository;
+    private final InvoiceSequenceRepository invoiceSequenceRepository;
     private final AuditService auditService;
     private final Clock clock;
-    private final AtomicLong sequence = new AtomicLong(1000);
 
     public InvoiceService(InvoiceRepository invoiceRepository,
+                          InvoiceSequenceRepository invoiceSequenceRepository,
                           AuditService auditService,
                           Clock clock) {
         this.invoiceRepository = invoiceRepository;
+        this.invoiceSequenceRepository = invoiceSequenceRepository;
         this.auditService = auditService;
         this.clock = clock;
     }
@@ -61,15 +64,11 @@ public class InvoiceService {
 
     @Transactional
     public Invoice createFromReservation(Reservation reservation, UserAccount actor) {
-        if (invoiceRepository.existsByReservationIdAndStatusNot(reservation.getId(), InvoiceStatus.VOID)) {
-            return invoiceRepository.findAllDetailed().stream()
-                    .filter(i -> i.getReservation() != null
-                            && i.getReservation().getId().equals(reservation.getId())
-                            && i.getStatus() != InvoiceStatus.VOID)
-                    .findFirst()
-                    .orElseThrow();
-        }
+        return invoiceRepository.findActiveByReservationId(reservation.getId())
+                .orElseGet(() -> issueReservationStayInvoice(reservation, actor));
+    }
 
+    private Invoice issueReservationStayInvoice(Reservation reservation, UserAccount actor) {
         Invoice invoice = baseInvoice(reservation.getVessel().getOwner());
         invoice.setReservation(reservation);
 
@@ -78,14 +77,6 @@ public class InvoiceService {
                 "Berth " + reservation.getBerth().getCode() + " — " + nights + " night(s)",
                 BigDecimal.valueOf(nights),
                 reservation.getNightlyRate()));
-
-        if (reservation.getLateCancelFee() != null
-                && reservation.getLateCancelFee().compareTo(BigDecimal.ZERO) > 0) {
-            invoice.addLineItem(InvoiceLineItem.of(
-                    "Late cancellation fee",
-                    BigDecimal.ONE,
-                    reservation.getLateCancelFee()));
-        }
 
         finalizeAmounts(invoice);
         invoice.setStatus(InvoiceStatus.ISSUED);
@@ -102,6 +93,9 @@ public class InvoiceService {
                 || reservation.getLateCancelFee().compareTo(BigDecimal.ZERO) <= 0) {
             throw new BusinessException("NO_FEE", "No cancellation fee to invoice");
         }
+        // Cancellation fee invoices are separate documents; still keyed to the reservation.
+        // Allow multiple only if prior non-void cancel fee already exists is acceptable for idempotency
+        // on double-submit of cancel — use a dedicated notes marker if needed later.
         Invoice invoice = baseInvoice(reservation.getVessel().getOwner());
         invoice.setReservation(reservation);
         invoice.addLineItem(InvoiceLineItem.of(
@@ -122,15 +116,11 @@ public class InvoiceService {
         if (workOrder.getVessel() == null) {
             throw new BusinessException("NO_CUSTOMER", "Work order has no vessel/customer to bill");
         }
-        if (invoiceRepository.existsByWorkOrderIdAndStatusNot(workOrder.getId(), InvoiceStatus.VOID)) {
-            return invoiceRepository.findAllDetailed().stream()
-                    .filter(i -> i.getWorkOrder() != null
-                            && i.getWorkOrder().getId().equals(workOrder.getId())
-                            && i.getStatus() != InvoiceStatus.VOID)
-                    .findFirst()
-                    .orElseThrow();
-        }
+        return invoiceRepository.findActiveByWorkOrderId(workOrder.getId())
+                .orElseGet(() -> issueWorkOrderInvoice(workOrder, actor));
+    }
 
+    private Invoice issueWorkOrderInvoice(WorkOrder workOrder, UserAccount actor) {
         Invoice invoice = baseInvoice(workOrder.getVessel().getOwner());
         invoice.setWorkOrder(workOrder);
 
@@ -214,9 +204,17 @@ public class InvoiceService {
         invoice.setTotalAmount(subtotal.add(tax));
     }
 
+    /**
+     * Allocates the next invoice number from a DB-backed counter under a row lock so
+     * restarts and concurrent issuers cannot reuse numbers.
+     */
     private String nextNumber() {
+        InvoiceSequence sequence = invoiceSequenceRepository.lockSingleton()
+                .orElseThrow(() -> new IllegalStateException(
+                        "invoice_sequence row missing — ensure Flyway migration applied"));
+        long seq = sequence.allocateNext();
         String date = LocalDate.now(clock).format(DateTimeFormatter.BASIC_ISO_DATE);
-        return "INV-" + date + "-" + sequence.incrementAndGet();
+        return "INV-" + date + "-" + seq;
     }
 
     private void requireStaff(UserAccount actor) {

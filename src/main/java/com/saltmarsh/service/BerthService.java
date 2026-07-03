@@ -12,6 +12,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -20,10 +22,12 @@ public class BerthService {
 
     private final BerthRepository berthRepository;
     private final AuditService auditService;
+    private final Clock clock;
 
-    public BerthService(BerthRepository berthRepository, AuditService auditService) {
+    public BerthService(BerthRepository berthRepository, AuditService auditService, Clock clock) {
         this.berthRepository = berthRepository;
         this.auditService = auditService;
+        this.clock = clock;
     }
 
     @Transactional(readOnly = true)
@@ -42,7 +46,7 @@ public class BerthService {
         if (!end.isAfter(start)) {
             throw new BusinessException("INVALID_DATES", "End date must be after start date");
         }
-        return berthRepository.findAvailableFor(start, end, lengthFeet, draftFeet);
+        return berthRepository.findAvailableFor(start, end, lengthFeet, draftFeet, Instant.now(clock));
     }
 
     @Transactional
